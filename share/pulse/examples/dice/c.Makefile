@@ -8,8 +8,8 @@ PULSE_EXAMPLES_ROOT = $(PULSE_HOME)/share/pulse/examples
 OUTPUT_DIRECTORY=_output
 CACHE_DIRECTORY=$(OUTPUT_DIRECTORY)/cache
 INCLUDE_PATHS += common dpe engine l0 cbor
-FSTAR_FILES := dpe/DPE.fst
-ALREADY_CACHED_LIST = *,
+FSTAR_FILES := DPEExtractionTest.fst
+ALREADY_CACHED_LIST = *,-DPEExtractionTest
 FSTAR_DEP_FILE=.depend-c
 FSTAR_OPTIONS += --warn_error -342
 FSTAR_DEP_OPTIONS=--extract '* -FStar.Tactics -FStar.Reflection -Pulse -PulseCore +Pulse.Lib -Pulse.Lib.Array.Core -Pulse.Lib.Core -Pulse.Lib.HigherReference'
@@ -21,4 +21,4 @@ KRML ?= $(KRML_HOME)/krml
 
 .PHONY: extract
 extract: $(ALL_KRML_FILES)
-	$(KRML) -skip-compilation -bundle 'DPE=*' -library Pulse.Lib.SpinLock -warn-error @4+9 $^
+	$(KRML) -skip-compilation -bundle 'DPEExtractionTest=*' -library Pulse.Lib.SpinLock -warn-error @4+9 $^
