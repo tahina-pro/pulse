@@ -12,7 +12,7 @@ FSTAR_FILES := DPEExtractionTest.fst
 ALREADY_CACHED_LIST = *,-DPEExtractionTest
 FSTAR_DEP_FILE=.depend-c
 FSTAR_OPTIONS += --warn_error -342
-FSTAR_DEP_OPTIONS=--extract '* -FStar.Tactics -FStar.Reflection -Pulse -PulseCore +Pulse.Lib -Pulse.Lib.Array.Core -Pulse.Lib.Core -Pulse.Lib.HigherReference'
+FSTAR_DEP_OPTIONS=--extract '* -FStar.Tactics -FStar.Reflection -Pulse -PulseCore +Pulse.Lib -Pulse.Lib.Array.Core -Pulse.Lib.Core -Pulse.Lib.HigherReference -Pulse.Lib.Reference'
 all: extract
 
 include $(PULSE_HOME)/share/pulse/Makefile.include
