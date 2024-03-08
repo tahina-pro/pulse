@@ -6,6 +6,10 @@ INCLUDE_PATHS += $(PULSE_HOME)/lib/pulse/c
 OUTPUT_DIRECTORY=_output
 CACHE_DIRECTORY=$(OUTPUT_DIRECTORY)/cache
 
+ifneq (,$(CACHE_DIRECTORY))
+CACHE_DIR2 = $(CACHE_DIRECTORY)/
+endif
+
 all: verify test dice
 
 include $(PULSE_SHARE)/Makefile.include
@@ -52,7 +56,21 @@ extract_pulse_c:
 
 endif
 
-test: test-cbor extract_pulse_c
+.PHONY: krml-extraction-tests
+ifeq (,$(KRML_HOME))
+krml-extraction-tests:
+else
+
+.PHONY: %.krml-extraction-test
+
+%.krml-extraction-test: $(CACHE_DIR2)%.fst.checked
+	$(MAKE) -f $(basename $@).Makefile
+
+krml-extraction-tests: $(addsuffix .krml-extraction-test,$(basename $(wildcard Example.KrmlExtractionTest.*.fst)))
+
+endif
+
+test: test-cbor extract_pulse_c krml-extraction-tests
 
 .PHONY: extract_pulse_c
 
