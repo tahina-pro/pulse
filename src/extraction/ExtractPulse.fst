@@ -51,6 +51,10 @@ let pulse_translate_expr : translate_expr_t = fun env e ->
     when string_of_mlpath p = "Pulse.Lib.Reference.alloc" ->
     EBufCreate (Stack, translate_expr env init, EConstant (UInt32, "1"))
 
+  | MLE_App ({ expr = MLE_TApp({ expr = MLE_Name p }, _) }, [ init ])
+    when string_of_mlpath p = "Pulse.Lib.Reference.alloc" ->
+    EBufCreate (Stack, translate_expr env init, EConstant (UInt32, "1"))
+
   | MLE_App({expr=MLE_App({expr=MLE_App ({ expr = MLE_TApp({ expr = MLE_Name p }, _) }, [ e ])}, [_v])}, [_perm])
   | MLE_App ({ expr = MLE_TApp({ expr = MLE_Name p }, _) }, [ e; _v; _perm ])
     when string_of_mlpath p = "Pulse.Lib.Reference.op_Bang" ->
@@ -65,13 +69,25 @@ let pulse_translate_expr : translate_expr_t = fun env e ->
   | MLE_App ({ expr = MLE_TApp({ expr = MLE_Name p }, _) }, [ x; n])
     when string_of_mlpath p = "Pulse.Lib.Array.Core.alloc" ->
     EBufCreate (ManuallyManaged, translate_expr env x, translate_expr env n)
-    
+
+  | MLE_App ({ expr = MLE_Name p }, [ x; n])
+    when string_of_mlpath p = "Pulse.Lib.Array.Core.alloc" ->
+    EBufCreate (ManuallyManaged, translate_expr env x, translate_expr env n)
+
   | MLE_App ({ expr = MLE_TApp({ expr = MLE_Name p }, _) }, [ e; i; _p; _w ])
     when string_of_mlpath p = "Pulse.Lib.Array.Core.op_Array_Access" ->
     EBufRead (translate_expr env e, translate_expr env i)
 
+  | MLE_App ({ expr = MLE_TApp({ expr = MLE_Name p }, _) }, [ _p; _w; e; i ])
+    when string_of_mlpath p = "Pulse.Lib.Array.Core.opArrayAccess0" ->
+    EBufRead (translate_expr env e, translate_expr env i)
+
   | MLE_App ({ expr = MLE_TApp({ expr = MLE_Name p }, _) }, [ e; i; v; _w ])
     when string_of_mlpath p = "Pulse.Lib.Array.Core.op_Array_Assignment" ->
+    EBufWrite (translate_expr env e, translate_expr env i, translate_expr env v)
+
+  | MLE_App ({ expr = MLE_TApp({ expr = MLE_Name p }, _) }, [ _w; e; i; v ])
+    when string_of_mlpath p = "Pulse.Lib.Array.Core.opArrayAssignment0" ->
     EBufWrite (translate_expr env e, translate_expr env i, translate_expr env v)
 
   | MLE_App ({ expr = MLE_TApp({ expr = MLE_Name p }, _) }, (e :: i :: _))
@@ -86,10 +102,19 @@ let pulse_translate_expr : translate_expr_t = fun env e ->
     when string_of_mlpath p = "Pulse.Lib.Array.Core.free" ->
     EBufFree (translate_expr env x)
 
+  | MLE_App ({ expr = MLE_TApp({ expr = MLE_Name p }, _) }, [ _w; x ])
+    when string_of_mlpath p = "Pulse.Lib.Array.Core.free0" ->
+    EBufFree (translate_expr env x)
+
   (* Pulse control, while etc *)
   | MLE_App ({expr=MLE_Name p}, [{expr=MLE_Fun (_, test)}; {expr=MLE_Fun(_, body)}])
     when (string_of_mlpath p = "Pulse.Lib.Core.while_") ->
     EWhile(translate_expr env test, translate_expr env body)
+
+  // FIXME: what should we do with global variables? Pulse2Rust also has an equivalent ad-hoc rule
+  | MLE_App ({ expr = MLE_TApp({ expr = MLE_Name p }, _) }, [ _post; x ])
+    when string_of_mlpath p = "DPE.run_stt" ->
+    translate_expr env x
 
   | _ -> raise NotSupportedByKrmlExtension
 

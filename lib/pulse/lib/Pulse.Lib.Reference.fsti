@@ -30,21 +30,28 @@ val pts_to
     ([@@@equate_by_smt] n:a)
   : vprop
 
-[@@deprecated "Reference.alloc is unsound; use Box.alloc instead"]
+noextract
+[@@deprecated "Reference.alloc is unsound; use Box.alloc instead";
+  noextract_to "krml"]
 val alloc (#a:Type) (x:a)
   : stt (ref a) emp (fun r -> pts_to r x)
   
+noextract [@@ noextract_to "krml"]
 val ( ! ) (#a:Type) (r:ref a) (#n:erased a) (#p:perm)
   : stt a
         (pts_to r #p n)
         (fun x -> pts_to r #p n ** pure (reveal n == x))
 
+noextract [@@ noextract_to "krml"]
 val ( := ) (#a:Type) (r:ref a) (x:a) (#n:erased a)
   : stt unit
         (pts_to r n) 
         (fun _ -> pts_to r (hide x))
 
-[@@deprecated "Reference.free is unsound; use Box.free instead"]
+noextract
+[@@deprecated "Reference.free is unsound; use Box.free instead";
+  noextract_to "krml"
+]
 val free (#a:Type) (r:ref a) (#n:erased a)
   : stt unit (pts_to r n) (fun _ -> emp)
 
@@ -71,11 +78,13 @@ val gather2 (#a:Type) (r:ref a) (#x0 #x1:erased a)
       (pts_to r #one_half x0 ** pts_to r #one_half x1)
       (fun _ -> pts_to r x0 ** pure (x0 == x1))
 
+noextract [@@noextract_to "krml"]
 val read_atomic (r:ref U32.t) (#n:erased U32.t) (#p:perm)
   : stt_atomic U32.t #Observable emp_inames
     (pts_to r #p n)
     (fun x -> pts_to r #p n ** pure (reveal n == x))
 
+noextract [@@noextract_to "krml"]
 val write_atomic (r:ref U32.t) (x:U32.t) (#n:erased U32.t)
   : stt_atomic unit #Observable emp_inames
         (pts_to r n) 
@@ -83,6 +92,7 @@ val write_atomic (r:ref U32.t) (x:U32.t) (#n:erased U32.t)
 
 let cond b (p q:vprop) = if b then p else q
 
+noextract [@@noextract_to "krml"]
 val cas (r:ref U32.t) (u v:U32.t) (#i:erased U32.t)
   : stt_atomic bool #Observable emp_inames 
     (pts_to r i)
@@ -90,6 +100,7 @@ val cas (r:ref U32.t) (u v:U32.t) (#i:erased U32.t)
       cond b (pts_to r v ** pure (reveal i == u)) 
              (pts_to r i))
 
+noextract [@@noextract_to "krml"]
 val with_local
   (#a:Type0)
   (init:a)

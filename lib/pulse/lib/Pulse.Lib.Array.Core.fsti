@@ -28,6 +28,7 @@ val length (#a:Type u#0) (x:array a) : Ghost nat (requires True) (ensures SZ.fit
 
 type elseq (a:Type) (l:SZ.t) = s:erased (Seq.seq a) { Seq.length s == SZ.v l }
 
+inline_for_extraction
 type larray t (n:nat) = a:array t { length a == n }
 
 val is_full_array (#a:Type u#0) (x:array a) : prop
@@ -63,6 +64,19 @@ val op_Array_Access
             pts_to a #p s **
             pure (res == Seq.index s (SZ.v i)))
 
+let opArrayAccess0
+        (#t: Type)
+        (#p: perm)
+        (#s: Ghost.erased (Seq.seq t))
+        (a: array t)
+        (i: SZ.t{SZ.v i < Seq.length s})
+  : stt t
+        (requires
+            pts_to a #p s)
+        (ensures fun res ->
+            pts_to a #p s **
+            pure (res == Seq.index s (SZ.v i)))
+= op_Array_Access #t a i #p #s
 
 (* Written x.(i) <- v *)
 val op_Array_Assignment
@@ -77,6 +91,19 @@ val op_Array_Assignment
         (ensures fun res ->
             pts_to a (Seq.upd s (SZ.v i) v))
 
+let opArrayAssignment0
+        (#t: Type)
+        (#s: Ghost.erased (Seq.seq t))
+        (a: array t)
+        (i: SZ.t {SZ.v i < Seq.length s})
+        (v: t)
+  : stt unit
+        (requires
+            pts_to a s)
+        (ensures fun res ->
+            pts_to a (Seq.upd s (SZ.v i) v))
+= op_Array_Assignment #t a i v #s
+
 val free
         (#elt: Type)
         (a: array elt)
@@ -87,6 +114,18 @@ val free
             pure (is_full_array a))
         (ensures fun _ ->
             emp)
+
+let free0
+        (#elt: Type)
+        (#s: Ghost.erased (Seq.seq elt))
+        (a: array elt)
+  : stt unit
+        (requires
+            pts_to a s **
+            pure (is_full_array a))
+        (ensures fun _ ->
+            emp)
+= free #elt a #s
 
 val share
   (#a:Type)

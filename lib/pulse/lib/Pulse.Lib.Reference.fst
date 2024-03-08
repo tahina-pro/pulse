@@ -28,6 +28,7 @@ let pts_to
     ([@@@equate_by_smt] v:a)
   = H.pts_to r #p (U.raise_val v)
 
+noextract [@@noextract_to "krml"]
 ```pulse
 fn alloc' (#a:Type u#0) (v:a)
 requires emp
@@ -41,6 +42,7 @@ ensures pts_to r v
 ```
 let alloc = alloc'
 
+noextract [@@noextract_to "krml"]
 ```pulse
 fn read (#a:Type) (r:ref a) (#n:erased a) (#p:perm)
 requires pts_to r #p n
@@ -55,6 +57,7 @@ ensures pts_to r #p n ** pure (eq2 #a (reveal n) x)
 ```
 let ( ! ) #a = read #a
 
+noextract [@@noextract_to "krml"]
 ```pulse
 fn write (#a:Type) (r:ref a) (x:a) (#n:erased a)
 requires pts_to r #full_perm n
@@ -67,6 +70,7 @@ ensures pts_to r #full_perm x
 ```
 let ( := ) #a r x #n = write #a r x #n
 
+noextract [@@noextract_to "krml"]
 ```pulse
 fn free' #a (r:ref a) (#n:erased a)
 requires pts_to r #full_perm n
@@ -143,6 +147,7 @@ let read_atomic (r:ref U32.t) (#n:erased U32.t) (#p:perm)
 let write_atomic (r:ref U32.t) (x:U32.t) (#n:erased U32.t)
 = Pulse.Lib.Core.as_atomic _ _ (write r x #n)
 
+noextract [@@noextract_to "krml"]
 ```pulse
 fn cas_impl
     (r:ref U32.t)
@@ -173,6 +178,7 @@ ensures
 let cas r u v #i = Pulse.Lib.Core.as_atomic _ _ (cas_impl r u v #i)
 
 
+noextract [@@noextract_to "krml"]
 ```pulse
 fn
 raise_exists (#a:Type u#0) (frame:vprop) (p: U.raise_t u#0 u#1 a -> vprop)
