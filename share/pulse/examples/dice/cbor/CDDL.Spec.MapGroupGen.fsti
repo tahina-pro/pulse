@@ -216,13 +216,13 @@ val map_group_nop : map_group
 
 val map_group_end : map_group
 
-val map_group_match_item (key value: typ) : map_group
-
 let matches_map_group_entry
   (key value: typ)
   (x: (Cbor.raw_data_item & Cbor.raw_data_item))
 : GTot bool
 = key (fst x) && value (snd x)
+
+val map_group_match_item (key value: typ) : map_group
 
 val map_group_choice (m1 m2: map_group) : map_group
 
