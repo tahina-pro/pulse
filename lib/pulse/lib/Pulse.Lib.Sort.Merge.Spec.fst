@@ -170,6 +170,114 @@ let rec list_splitAt_append
   | a :: q ->
     if n = 0 then () else list_splitAt_append (n - 1) q
 
+let spec_sort_one_pass
+  (#t: Type)
+  (compare: t -> t -> int)
+  (state: (list (list t) & list (list t)))
+: Pure (bool & (list (list t) & list (list t)))
+    (requires (List.Tot.length (snd state) >= 2))
+    (ensures (fun _ -> True))
+= let (already_done, l1 :: l2 :: q) = state in
+  let (res, l') = spec_merge compare [] l1 l2 in
+  (res, (already_done `List.Tot.append` [l'], q))
+
+let list_not_sorted
+  (#t: Type)
+  (compare: t -> t -> int)
+  (l: list t)
+: Tot prop
+= exists l1 l2 x1 x2 . l == List.Tot.append l1 l2 /\ List.Tot.memP x1 l1 /\ List.Tot.memP x2 l2 /\ compare x1 x2 == 0
+
+let spec_sort_pass_invariant
+  (#t: Type)
+  (order: t -> t -> bool)
+  (compare: t -> t -> int)
+  (l0: list t)
+  (state: (bool & (list (list t) & list (list t))))
+: Tot prop
+= let (res, (l1, l2)) = state in
+  List.Tot.for_all (List.Tot.sorted order) l1 /\
+  List.Tot.for_all (List.Tot.sorted order) l2 /\
+  List.Tot.length (List.Tot.flatten l1) + List.Tot.length (List.Tot.flatten l2) == List.Tot.length l0 /\
+  (forall x . List.Tot.memP x l0 <==> List.Tot.memP x (List.Tot.append (List.Tot.flatten l1) (List.Tot.flatten l2))) /\
+  (res == false ==> list_not_sorted compare l0)
+
+let rec spec_sort_pass
+  (#t: Type)
+  (compare: t -> t -> int)
+  (state: (list (list t) & list (list t)))
+: Tot (bool & (list (list t) & list (list t)))
+  (decreases (List.Tot.length (snd state)))
+= match snd state with
+  | []
+  | [_] -> (true, state)
+  | _ ->
+    let res = spec_sort_one_pass compare state in
+    if fst res
+    then spec_sort_pass compare (snd res)
+    else res
+
+let rec spec_sort_pass_decreases
+  (#t: Type)
+  (compare: t -> t -> int)
+  (state: (list (list t) & list (list t)))
+: Lemma
+  (requires (List.Tot.length (snd state) >= 2))
+  (ensures (
+    let (_, state') = spec_sort_pass compare state in
+    List.Tot.length (fst state') + List.Tot.length (snd state') < List.Tot.length (fst state) + List.Tot.length (snd state)
+  ))
+  (decreases (List.Tot.length (fst state) + List.Tot.length (snd state)))
+= if List.Tot.length (snd state) < 2
+  then ()
+  else begin
+    let (res, state') = spec_sort_one_pass compare state in
+    let l1 :: l2 :: _ = snd state in
+    let (_, l') = spec_merge compare [] l1 l2 in
+    List.Tot.append_length (fst state) [l'];
+    if res
+    then begin
+      if List.Tot.length (snd state') >= 2
+      then spec_sort_pass_decreases compare state'
+      else ()
+    end
+    else ()
+  end
+
+let list_singleton (#t: Type) (x: t) : Tot (list t) = [x]
+
+let rec list_flatten_map_singleton (#t: Type) (l: list t) : Lemma
+  (List.Tot.flatten (List.Tot.map list_singleton l) == l)
+= match l with
+  | [] -> ()
+  | a :: q -> list_flatten_map_singleton q
+
+let rec spec_sort_aux
+  (#t: Type)
+  (compare: t -> t -> int)
+  (l: list (list t))
+: Tot (bool & list (list t))
+  (decreases (List.Tot.length l))
+= match l with
+  | []
+  | [_] -> (true, l)
+  | _ ->
+    let (res, (l1, l2)) = spec_sort_pass compare ([], l) in
+    spec_sort_pass_decreases compare ([], l);
+    List.Tot.append_length l1 l2;
+    let l' = List.Tot.append l1 l2 in
+    if res
+    then spec_sort_aux compare l'
+    else (false, l')
+
+let spec_sort'
+  (#t: Type)
+  (compare: t -> t -> int)
+  (l: list t)
+: Tot (bool & list t)
+= let (res, l') = spec_sort_aux compare (List.Tot.map list_singleton l) in
+  (res, List.Tot.flatten l')
+
 [@@noextract_to "krml"] noextract
 let rec spec_sort
   (#t: Type)
