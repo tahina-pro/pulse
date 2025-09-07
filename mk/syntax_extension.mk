@@ -10,7 +10,9 @@ FSTAR_OPTIONS += --lax --MLish --MLish_effect FStarC.Effect
 
 DEPFLAGS += --already_cached 'Prims,FStarC'
 
-PULSE_ROOT ?= .
+ifeq (,$(PULSE_ROOT))
+PULSE_ROOT := .
+endif
 include $(PULSE_ROOT)/mk/boot.mk
 
 .DEFAULT_GOAL := ocaml

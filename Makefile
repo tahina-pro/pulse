@@ -46,9 +46,15 @@ plugin.build: plugin.src .force
 	  dune build --no-print-directory --root=build/ocaml
 
 ## Installing the plugin into out/
+ifeq ($(OS),Windows_NT)
+plugin: plugin.build .force
+	$(FSTAR_EXE) --ocamlenv \
+	  dune install --root=build/ocaml --prefix=$(shell cygpath -m $(abspath build/ocaml/installed))
+else
 plugin: plugin.build .force
 	$(FSTAR_EXE) --ocamlenv \
 	  dune install --root=build/ocaml --prefix=$(abspath build/ocaml/installed)
+endif
 
 # Checking the library. Modules in common are shared between core and pulse, but core
 # and pulse are independent otherwise.
@@ -61,7 +67,11 @@ lib-core: lib-common .force
 lib-pulse: plugin lib-common .force
 	$(MAKE) -f mk/lib-pulse.mk
 
+ifeq ($(OS),Windows_NT)
+local-install: override PREFIX=$(shell cygpath -m $(CURDIR))/out
+else
 local-install: override PREFIX=$(CURDIR)/out
+endif
 local-install: do-install
 
 .PHONY: do-install
@@ -72,8 +82,13 @@ do-install: plugin lib-pulse
 	mkdir -p $(PREFIX)/lib/pulse/lib
 	mkdir -p $(PREFIX)/share/pulse
 	# Install plugin.
+ifeq ($(OS),Windows_NT)
+	$(FSTAR_EXE) --ocamlenv \
+	  dune install --root=build/ocaml --prefix=$(shell cygpath -m $(abspath $(PREFIX)))
+else
 	$(FSTAR_EXE) --ocamlenv \
 	  dune install --root=build/ocaml --prefix=$(abspath $(PREFIX))
+endif
 	# Install library (cp -p: preserve time/perms)
 	# We install it flat. Note that lib/core is not included, but still some PulseCore
 	# checked files make it in. We could add:
