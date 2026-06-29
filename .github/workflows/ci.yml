@@ -30,7 +30,7 @@ jobs:
         with:
           path: FStar
           repository: FStarLang/FStar
-          ref: master
+          ref: fstar1
 
       - name: Try fetch built F*
         id: cache-fstar
