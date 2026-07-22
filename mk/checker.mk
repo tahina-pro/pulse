@@ -14,7 +14,9 @@ FSTAR_OPTIONS += --z3smtopt '(set-option :smt.arith.nl false)'
 EXTRACT += --extract '-*,+Pulse,+PulseSyntaxExtension'
 DEPFLAGS += --already_cached 'Prims,FStar,FStarC'
 
-PULSE_ROOT ?= .
+ifeq (,$(PULSE_ROOT))
+PULSE_ROOT := .
+endif
 include $(PULSE_ROOT)/mk/boot.mk
 
 .DEFAULT_GOAL := ocaml

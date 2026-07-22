@@ -64,7 +64,11 @@ FSTAR_FILES := $(strip $(FSTAR_FILES))
 
 ifneq ($(FSTAR_FILES),) # It anyway only runs if fst/fsti files are found in the cwd
 .depend: $(FSTAR_FILES)
+ifeq ($(OS),Windows_NT)
+	$(call msg, "DEPEND", $(shell cygpath -m $(CURDIR)))
+else
 	$(call msg, "DEPEND", $(CURDIR))
+endif
 	$(FSTAR) --dep full $(FSTAR_FILES) --output_deps_to $@
 depend: .depend
 include .depend

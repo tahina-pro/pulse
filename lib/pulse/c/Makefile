@@ -1,4 +1,6 @@
-PULSE_HOME ?= ../../..
+ifeq (,$(PULSE_HOME))
+PULSE_HOME := ../../..
+endif
 ALREADY_CACHED_LIST = '*,-Pulse.C'
 
 all: verify

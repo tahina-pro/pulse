@@ -83,6 +83,12 @@ need =												\
   $(if $(value $(strip $1)),,									\
     $(error Need a value for $(strip $1)$(if $2, ("$(strip $2)"))))
 
+ifeq ($(OS),Windows_NT)
+fixabspath = $(shell cygpath -m $(abspath $1))
+else
+fixabspath = $(abspath $1)
+endif
+
 # Check that a variable is defined and pointing to an executable.
 # Is there no negation in make...?
 # Wew! this was interesting to write. Especially the override part.
@@ -90,7 +96,7 @@ need_exe =											\
   $(if $(value $(strip $1)),									\
     $(if $(wildcard $(value $(strip $1))),							\
       $(if $(shell test -x $(value $(strip $1)) && echo 1),					\
-        $(eval override $(strip $1):=$(abspath $(value $(strip $1)))),				\
+        $(eval override $(strip $1):=$(call fixabspath,$(value $(strip $1)))),				\
         $(error $(strip $1) ("$(value $(strip $1))") is not executable)),			\
       $(if $(shell which $(value $(strip $1))),							\
         $(eval override $(strip $1):=$(shell which $(value $(strip $1)))),			\
@@ -101,7 +107,7 @@ need_file =											\
   $(if $(value $(strip $1)),									\
     $(if $(wildcard $(value $(strip $1))),							\
       $(if $(shell test -f $(value $(strip $1)) && echo 1),					\
-        $(eval override $(strip $1):=$(abspath $(value $(strip $1)))),				\
+        $(eval override $(strip $1):=$(call fixabspath,$(value $(strip $1)))),				\
         $(error $(strip $1) ("$(value $(strip $1))") is not executable)),			\
       $(error $(strip $1) ("$(value $(strip $1))") does not exist (cwd = $(CURDIR)))),		\
     $(error Need a file path for $(strip $1)$(if $2, ("$(strip $2)"))))				\
@@ -110,7 +116,7 @@ need_dir =											\
   $(if $(value $(strip $1)),									\
     $(if $(wildcard $(value $(strip $1))),							\
       $(if $(shell test -d $(value $(strip $1)) && echo 1),					\
-        $(eval override $(strip $1):=$(abspath $(value $(strip $1)))),				\
+        $(eval override $(strip $1):=$(call fixabspath,$(value $(strip $1)))),				\
         $(error $(strip $1) ("$(value $(strip $1))") is not executable)),			\
       $(error $(strip $1) ("$(value $(strip $1))") is not a directory (cwd = $(CURDIR)))),	\
     $(error Need an *existing* directory path for $(strip $1)$(if $2, ("$(strip $2)"))))	\
@@ -118,6 +124,6 @@ need_dir =											\
 need_dir_mk =											\
   $(if $(value $(strip $1)),									\
     $(if $(shell mkdir -p $(value $(strip $1)) && echo 1),					\
-      $(eval override $(strip $1):=$(abspath $(value $(strip $1)))),				\
+      $(eval override $(strip $1):=$(call fixabspath,$(value $(strip $1)))),				\
       $(error $(strip $1) ("$(value $(strip $1))") is not a directory (mkdir failed, cwd = $(CURDIR)))),	\
     $(error Need a directory path for $(strip $1)$(if $2, ("$(strip $2)"))))			\
