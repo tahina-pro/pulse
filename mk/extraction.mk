@@ -1,7 +1,8 @@
 TAG := extraction
 SRC := src/extraction
 CACHE_DIR := build/$(TAG).checked
-OUTPUT_DIR := build/$(TAG).ml
+# Extract directly into the dune plugin tree (no symlinks, for Windows support)
+OUTPUT_DIR := build/ocaml/plugin/$(TAG)
 CODEGEN := PluginNoLib
 ROOTS := $(shell find $(SRC) -name '*.fst' -o -name '*.fsti')
 FSTAR_OPTIONS += --with_fstarc

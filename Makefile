@@ -38,7 +38,14 @@ extraction.src: .force
 syntax_extension.src: .force
 	$(MAKE) -f mk/syntax_extension.mk
 
-plugin.src: checker.src extraction.src syntax_extension.src
+# Copy the hand-written OCaml sources for the plugin into the dune tree.
+# We do this instead of a symlink so the build works on platforms without
+# symlink support (e.g. Windows). The canonical sources live in src/ml.
+plugin.mlsrc: .force
+	mkdir -p build/ocaml/plugin/ml
+	cp -p -R src/ml/. build/ocaml/plugin/ml/
+
+plugin.src: checker.src extraction.src syntax_extension.src plugin.mlsrc
 
 ## Building the plugin with dune
 plugin.build: plugin.src .force
@@ -116,6 +123,7 @@ clean:
 	$(MAKE) -f mk/lib-pulse.mk clean
 	$(MAKE) -f mk/lib-core.mk clean
 	$(MAKE) -f mk/lib-common.mk clean
+	rm -rf build/ocaml/plugin/ml
 
 .PHONY: test-pulse
 test-pulse: local-install

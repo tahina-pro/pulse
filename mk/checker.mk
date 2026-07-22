@@ -1,7 +1,8 @@
 SRC := src/checker/
 TAG := checker
 CACHE_DIR := build/$(TAG).checked
-OUTPUT_DIR := build/$(TAG).ml
+# Extract directly into the dune plugin tree (no symlinks, for Windows support)
+OUTPUT_DIR := build/ocaml/plugin/$(TAG)
 CODEGEN := Plugin
 ROOTS := $(shell find $(SRC) -name '*.fst' -o -name '*.fsti')
 ROOTS += lib/common/Pulse.Lib.Tactics.fsti
