@@ -169,7 +169,7 @@ jobs:
       - name: Set up OCaml (also installs Cygwin)
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 4.14.2
+          ocaml-compiler: 5.3.0
 
       - name: Install Cygwin packages
         shell: C:\.opam\.cygwin\root\bin\bash.exe --login '{0}'
@@ -210,6 +210,13 @@ jobs:
           opam install --deps-only --yes ./karamel-deps.opam
           make -j$(nproc)
 
+      - name: Install domainslib (for the task pool test)
+        shell: C:\.opam\.cygwin\root\bin\bash.exe --login '{0}'
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          eval $(opam env)
+          opam install --yes domainslib
+
       - name: Pulse CI
         shell: C:\.opam\.cygwin\root\bin\bash.exe --login '{0}'
         run: |
@@ -227,9 +234,7 @@ jobs:
           cd pulse
           # PULSE_NO_RUST=1: skip the pulse2rust tool and its tests, which are
           # the only parts of `ci` that need a Rust toolchain.
-          # PULSE_NO_DOMAINSLIB=1: domainslib requires OCaml 5, but this build
-          # uses OCaml 4.14, so skip that task-pool variant (pulse_task still runs).
-          make -j$(nproc) -k ci PULSE_NO_RUST=1 PULSE_NO_DOMAINSLIB=1
+          make -j$(nproc) -k ci PULSE_NO_RUST=1
 
   ci:
     name: CI success
