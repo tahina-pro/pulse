@@ -1,0 +1,9 @@
+git
+curl
+wget
+unzip
+zip
+time
+pkg-config
+mingw64-x86_64-gmp
+mingw64-x86_64-libffi

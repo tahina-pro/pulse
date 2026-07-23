@@ -12,7 +12,7 @@ defaults:
     shell: bash
 
 jobs:
-  ci:
+  ci_ubuntu:
     runs-on: ubuntu-latest
     container: mtzguido/dev-base
     steps:
@@ -88,3 +88,167 @@ jobs:
       - name: Pulse CI
         id: cistep
         run: . $HOME/.cargo/env && make -C pulse ci -skj$(nproc)
+
+  # Build (and cache) an F* source package on Linux, to be consumed by the
+  # Windows job below. F* cannot be built directly from a git checkout on
+  # Windows, so we ship an OCaml source package instead, exactly as
+  # EverParse's package-windows workflow does.
+  fstar_src:
+    runs-on: ubuntu-22.04
+    # Slightly older Ubuntu, so the produced package works on more systems.
+    steps:
+      - uses: actions/checkout@master
+        id: checkout-fstar
+        with:
+          repository: FStarLang/FStar
+          ref: fstar1
+
+      - name: Try fetch built F* source package
+        id: check-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: fstar-src.tar.gz
+          key: FStar-src-${{ steps.checkout-fstar.outputs.commit }}
+
+      - uses: ocaml/setup-ocaml@v3
+        if: steps.check-cache.outputs.cache-hit != 'true'
+        with:
+          ocaml-compiler: 4.14.2
+
+      - name: Prepare
+        if: steps.check-cache.outputs.cache-hit != 'true'
+        run: |
+          ./.scripts/get_fstar_z3.sh $HOME/bin
+          echo "PATH=$HOME/bin:$PATH" >> $GITHUB_ENV
+          opam install --deps-only ./fstar.opam
+
+      - name: Set F* version
+        if: steps.check-cache.outputs.cache-hit != 'true'
+        run: echo FSTAR_VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo unknown)" >> $GITHUB_ENV
+
+      - name: Build the F* source package
+        if: steps.check-cache.outputs.cache-hit != 'true'
+        run: |
+          eval $(opam env)
+          export FSTAR_TAG=
+          # ^ no tag in the source package: produces fstar-src.tar.gz
+          make -skj$(nproc) package-src ADMIT=1
+
+      - name: Save built F* source package
+        if: steps.check-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: fstar-src.tar.gz
+          key: FStar-src-${{ steps.checkout-fstar.outputs.commit }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          path: fstar-src.tar.gz
+          name: fstar-src
+
+  # Windows CI: build F* from the source package above, build karamel from
+  # source, then run the full Pulse `ci` rule under Cygwin. This is what
+  # exercises the symlink-free build on a platform without symlink support.
+  ci_windows:
+    needs: fstar_src
+    runs-on: windows-2025
+    steps:
+      - name: Use LF checkouts
+        run: git config --global core.autocrlf input
+
+      - uses: actions/checkout@v4
+        with:
+          path: pulse
+
+      - uses: actions/checkout@v4
+        with:
+          repository: FStarLang/karamel
+          ref: d6607b99477640cb1e5d423d5cbe709d76da61f7
+          path: karamel
+
+      - name: Set up OCaml (also installs Cygwin)
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.3.0
+
+      - name: Install Cygwin packages
+        shell: C:\.opam\.cygwin\root\bin\bash.exe --login '{0}'
+        env:
+          CYGWIN_ROOT: C:\.opam\.cygwin\root
+          CYGWIN_MIRROR: https://mirrors.kernel.org/sourceware/cygwin/
+        run: >-
+          "$GITHUB_WORKSPACE"/pulse/.github/windows/install-cygwin-packages.sh
+
+      - name: Download F* source package
+        uses: actions/download-artifact@v4
+        with:
+          name: fstar-src
+
+      - name: Build F* from the source package
+        shell: C:\.opam\.cygwin\root\bin\bash.exe --login '{0}'
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          tar xzf fstar-src.tar.gz
+          cd fstar
+          ./get_fstar_z3.sh "$HOME/bin"
+          export PATH="$HOME/bin:$PATH"
+          eval $(opam env)
+          opam install --deps-only --yes ./fstar.opam
+          make -j$(nproc)
+
+      - name: Build karamel
+        shell: C:\.opam\.cygwin\root\bin\bash.exe --login '{0}'
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          export FSTAR_EXE="$(pwd)/fstar/out/bin/fstar.exe"
+          export PATH="$HOME/bin:$PATH"
+          eval $(opam env)
+          cd karamel
+          # karamel.opam lists fstar as a dependency, but we build F*
+          # ourselves above, so drop it before installing the rest.
+          grep -v '"fstar"' karamel.opam > karamel-deps.opam
+          opam install --deps-only --yes ./karamel-deps.opam
+          make -j$(nproc)
+
+      - name: Install domainslib (for the task pool test)
+        shell: C:\.opam\.cygwin\root\bin\bash.exe --login '{0}'
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          eval $(opam env)
+          opam install --yes domainslib
+
+      - name: Pulse CI
+        shell: C:\.opam\.cygwin\root\bin\bash.exe --login '{0}'
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          # Use Windows/mixed ("D:/...") paths for KRML_HOME (and FSTAR_EXE): the
+          # C compiler KaRaMeL drives is native mingw gcc and `krml` is a native
+          # Windows binary, neither of which understands Cygwin ("/cygdrive/...")
+          # paths. Without this, krml passes "-I /cygdrive/.../karamel/include" to
+          # mingw cc and krmllib.h is not found.
+          workspace_w="$(cygpath -m "$(pwd)")"
+          export FSTAR_EXE="$workspace_w/fstar/out/bin/fstar.exe"
+          export KRML_HOME="$workspace_w/karamel"
+          export PATH="$HOME/bin:$PATH"
+          eval $(opam env)
+          cd pulse
+          # PULSE_NO_RUST=1: skip the pulse2rust tool and its tests, which are
+          # the only parts of `ci` that need a Rust toolchain.
+          make -j$(nproc) -k ci PULSE_NO_RUST=1
+
+  ci:
+    name: CI success
+    if: always()
+    needs: [ci_ubuntu, ci_windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all jobs succeeded
+        run: |
+          echo "Ubuntu: ${{ needs.ci_ubuntu.result }}"
+          echo "Windows: ${{ needs.ci_windows.result }}"
+          if [ "${{ needs.ci_ubuntu.result }}" != "success" ] || [ "${{ needs.ci_windows.result }}" != "success" ]
+          then
+            echo "One or more CI jobs failed."
+            exit 1
+          fi
+          echo "All CI jobs passed."
