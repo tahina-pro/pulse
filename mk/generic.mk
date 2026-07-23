@@ -105,12 +105,18 @@ $(DEPSTEM).pdf: $(DEPSTEM) .force
 
 all-checked: $(ALL_CHECKED_FILES)
 
+ifeq ($(OS),Windows_NT)
+fixrealpath = $(shell cygpath -m $(realpath $1))
+else
+fixrealpath = $(realpath $1)
+endif
+
 all-ml: $(ALL_ML_FILES)
 	@# Remove extraneous .ml files, which can linger after
 	@# module renamings. The realpath is necessary to prevent
 	@# discrepancies between absolute and relative paths, double
 	@# slashes, etc.
-	rm -vf $(filter-out $(realpath $(ALL_ML_FILES)), $(realpath $(wildcard $(OUTPUT_DIR)/*.ml)))
+	rm -vf $(filter-out $(call fixrealpath,$(ALL_ML_FILES)), $(call fixrealpath,$(wildcard $(OUTPUT_DIR)/*.ml)))
 
 all-fs: $(ALL_FS_FILES)
-	rm -vf $(filter-out $(realpath $(ALL_FS_FILES)), $(realpath $(wildcard $(OUTPUT_DIR)/*.fs)))
+	rm -vf $(filter-out $(call fixrealpath,$(ALL_FS_FILES)), $(call fixrealpath,$(wildcard $(OUTPUT_DIR)/*.fs)))

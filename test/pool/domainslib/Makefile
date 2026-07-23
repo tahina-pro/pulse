@@ -8,13 +8,22 @@ DEPFLAGS += --extract '-*'
 DEPFLAGS += --extract +Quicksort
 
 CACHE_DIR  := _cache
-OUTPUT_DIR := _output
+# Extract directly into the dune tree (no symlinks, for Windows support)
+OUTPUT_DIR := dune/output
 CODEGEN    := OCaml
 SRC        := .
 ROOTS      := Quicksort.Task.fst
 TAG        := pool
 
+# Copy the shared example into this directory instead of symlinking it,
+# so the build works on platforms without symlink support (e.g. Windows).
+Quicksort.Task.fst: $(PULSE_ROOT)/share/pulse/examples/Quicksort.Task.fst
+	cp -p $< $@
+
 include $(PULSE_ROOT)/mk/boot.mk
+
+# The dependency analysis (and hence extraction) needs the copied root present.
+$(DEPSTEM): Quicksort.Task.fst
 
 .DEFAULT_GOAL := all
 

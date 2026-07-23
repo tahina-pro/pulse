@@ -5,6 +5,8 @@ CODEGEN := NONE
 ROOTS := $(shell find $(SRC) -name '*.fst' -o -name '*.fsti')
 DEPFLAGS += --already_cached 'Prims,FStar,FStarC'
 TAG=common
-PULSE_ROOT ?= .
+ifeq (,$(PULSE_ROOT))
+PULSE_ROOT := .
+endif
 include $(PULSE_ROOT)/mk/boot.mk
 .DEFAULT_GOAL := verify # no extraction

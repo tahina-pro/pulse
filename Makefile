@@ -38,7 +38,14 @@ extraction.src: .force
 syntax_extension.src: .force
 	$(MAKE) -f mk/syntax_extension.mk
 
-plugin.src: checker.src extraction.src syntax_extension.src
+# Copy the hand-written OCaml sources for the plugin into the dune tree.
+# We do this instead of a symlink so the build works on platforms without
+# symlink support (e.g. Windows). The canonical sources live in src/ml.
+plugin.mlsrc: .force
+	mkdir -p build/ocaml/plugin/ml
+	cp -p -R src/ml/. build/ocaml/plugin/ml/
+
+plugin.src: checker.src extraction.src syntax_extension.src plugin.mlsrc
 
 ## Building the plugin with dune
 plugin.build: plugin.src .force
@@ -46,9 +53,15 @@ plugin.build: plugin.src .force
 	  dune build --no-print-directory --root=build/ocaml
 
 ## Installing the plugin into out/
+ifeq ($(OS),Windows_NT)
+plugin: plugin.build .force
+	$(FSTAR_EXE) --ocamlenv \
+	  dune install --root=build/ocaml --prefix=$(shell cygpath -m $(abspath build/ocaml/installed))
+else
 plugin: plugin.build .force
 	$(FSTAR_EXE) --ocamlenv \
 	  dune install --root=build/ocaml --prefix=$(abspath build/ocaml/installed)
+endif
 
 # Checking the library. Modules in common are shared between core and pulse, but core
 # and pulse are independent otherwise.
@@ -61,7 +74,11 @@ lib-core: lib-common .force
 lib-pulse: plugin lib-common .force
 	$(MAKE) -f mk/lib-pulse.mk
 
+ifeq ($(OS),Windows_NT)
+local-install: override PREFIX=$(shell cygpath -m $(CURDIR))/out
+else
 local-install: override PREFIX=$(CURDIR)/out
+endif
 local-install: do-install
 
 .PHONY: do-install
@@ -72,8 +89,13 @@ do-install: plugin lib-pulse
 	mkdir -p $(PREFIX)/lib/pulse/lib
 	mkdir -p $(PREFIX)/share/pulse
 	# Install plugin.
+ifeq ($(OS),Windows_NT)
+	$(FSTAR_EXE) --ocamlenv \
+	  dune install --root=build/ocaml --prefix=$(shell cygpath -m $(abspath $(PREFIX)))
+else
 	$(FSTAR_EXE) --ocamlenv \
 	  dune install --root=build/ocaml --prefix=$(abspath $(PREFIX))
+endif
 	# Install library (cp -p: preserve time/perms)
 	# We install it flat. Note that lib/core is not included, but still some PulseCore
 	# checked files make it in. We could add:
@@ -101,6 +123,7 @@ clean:
 	$(MAKE) -f mk/lib-pulse.mk clean
 	$(MAKE) -f mk/lib-core.mk clean
 	$(MAKE) -f mk/lib-common.mk clean
+	rm -rf build/ocaml/plugin/ml
 
 .PHONY: test-pulse
 test-pulse: local-install
