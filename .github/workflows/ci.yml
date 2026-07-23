@@ -214,8 +214,14 @@ jobs:
         shell: C:\.opam\.cygwin\root\bin\bash.exe --login '{0}'
         run: |
           cd "$GITHUB_WORKSPACE"
-          export FSTAR_EXE="$(pwd)/fstar/out/bin/fstar.exe"
-          export KRML_HOME="$(pwd)/karamel"
+          # Use Windows/mixed ("D:/...") paths for KRML_HOME (and FSTAR_EXE): the
+          # C compiler KaRaMeL drives is native mingw gcc and `krml` is a native
+          # Windows binary, neither of which understands Cygwin ("/cygdrive/...")
+          # paths. Without this, krml passes "-I /cygdrive/.../karamel/include" to
+          # mingw cc and krmllib.h is not found.
+          workspace_w="$(cygpath -m "$(pwd)")"
+          export FSTAR_EXE="$workspace_w/fstar/out/bin/fstar.exe"
+          export KRML_HOME="$workspace_w/karamel"
           export PATH="$HOME/bin:$PATH"
           eval $(opam env)
           cd pulse
