@@ -12,7 +12,7 @@ defaults:
     shell: bash
 
 jobs:
-  ci:
+  ci_ubuntu:
     runs-on: ubuntu-latest
     container: mtzguido/dev-base
     steps:
@@ -88,3 +88,19 @@ jobs:
       - name: Pulse CI
         id: cistep
         run: . $HOME/.cargo/env && make -C pulse ci -skj$(nproc)
+
+  ci:
+    name: CI success
+    if: always()
+    needs: [ci_ubuntu]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all jobs succeeded
+        run: |
+          echo "Ubuntu: ${{ needs.ci_ubuntu.result }}"
+          if [ "${{ needs.ci_ubuntu.result }}" != "success" ]
+          then
+            echo "One or more CI jobs failed."
+            exit 1
+          fi
+          echo "All CI jobs passed."
