@@ -966,6 +966,7 @@ fn forevery_split_or_2
     (forall+ (x:a { r x }). p x) **
     (forall+ (x:a { s x }). p x)
 
+(* FAIL: requires Ghost bijections
 ghost
 fn forevery_split_or_n
   (#a #b:Type0)
@@ -995,6 +996,7 @@ fn forevery_join_or_n
         p x
   ensures
     forall+ (x:a {exists i. r i x}). p x
+*)
 
 ghost
 fn on_forevery_elim (#a: Type0) (p: a -> slprop) (l: loc_id)

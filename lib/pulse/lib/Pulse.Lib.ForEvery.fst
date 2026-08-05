@@ -2125,6 +2125,7 @@ fn forevery_split_or_2
   forevery_refine_ext #a #(fun x -> (r x \/ s x) /\ ~(r x)) s p;
 }
 
+(* FAIL: requires Ghost bijections
 let or_n_bij #a #b (r: b -> a -> prop)
       (p : a -> slprop { forall (i1 i2 : b) x. r i1 x /\ r i2 x ==> i1 == i2 }) :
     (x:a { exists i. r i x } =~ i: b & (x:a { r i x })) =
@@ -2184,6 +2185,7 @@ fn forevery_join_or_n
   as
     forall+ (x:a {exists i. r i x}). p x;
 }
+*)
 
 ghost
 fn on_forevery_elim (#a: Type0) (p: a -> slprop) (l: loc_id)
